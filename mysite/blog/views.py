@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from .models import Post
 from django.views.generic import ListView
@@ -9,6 +9,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from .forms import PostForm
 from django.db.models import Q
+from django.utils import timezone
+
 
 # Create your views here.
 
@@ -22,10 +24,10 @@ def home(request):
         )
 
     # Top 4 most liked blogs, If possible after the feature of like count is added then 
-    # add a logic to store all the id's of most liked blogs from the database in a list, then pass all the id's from the list to this 4 query. 
+    # add a logic to store all the 4 id's of most liked blogs from the database in a list, then pass all the id's from the list to this 4 query. 
     mostliked1 = Post.objects.get(id=6)
     mostliked2 = Post.objects.get(id=5)
-    mostliked3 = Post.objects.get(id=5)
+    mostliked3 = Post.objects.get(id=4)
     mostliked4 = Post.objects.get(id=3)
 
     context={
@@ -37,8 +39,10 @@ def home(request):
     }
     return render(request,'blog/home.html', context)
 
+
 def about(request):
     return render(request,'blog/about.html')
+
 
 def Profileview(request,name):
     user =User.objects.get(username=name)
@@ -52,13 +56,21 @@ def Profileview(request,name):
         context={
             'posts': Post.objects.all(),'flag':flag  
         }
-        return render(request,'blog/home.html',context)
+        return render(request,'user/profile.html',context)
+
+
 class PostDetailView(DetailView):
     model = Post
+    def get_object(self):
+        obj = super().get_object()
+        obj.view_count += 1
+        obj.save()
+        return obj
+
 
 class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Post
-    fields = ['title', 'content']
+    fields = ['title', 'image', 'content']
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -80,6 +92,8 @@ class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
         if self.request.user == post.author:
             return True
         return False
+
+
 @login_required
 def post_create(request):
     form = PostForm(request.POST or None, request.FILES or None)
